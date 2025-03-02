@@ -48,6 +48,8 @@ body {
 
 <script>
 function calculateProfit() {
+	let buyOffer = 0;
+	let sellOffer = 0;
     const buyOfferValue = parseFloat(document.getElementById('buyOfferValue').value);
     const sellOfferValue = parseFloat(document.getElementById('sellOfferValue').value);
     
@@ -56,9 +58,16 @@ function calculateProfit() {
         document.getElementById('resultDisplay').style.backgroundColor = 'red';
         return;
     }
-    
-    const buyOffer = Math.ceil(buyOfferValue * 1.25);
-    const sellOffer = Math.floor(sellOfferValue * 0.8);
+    if (buyOfferValue > 40) {
+		buyOffer = buyOfferValue * 1.25;
+	}else {
+		buyOffer = buyOfferValue + 10;
+	}
+    if (sellOfferValue > 40) {
+		sellOffer = sellOfferValue * 0.8;
+	}else {
+		sellOffer = sellOfferValue - 10;
+	}
     const profit = sellOffer - buyOffer;
     
     const resultDisplay = document.getElementById('resultDisplay');
