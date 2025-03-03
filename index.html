@@ -59,12 +59,12 @@ function calculateProfit() {
         return;
     }
     if (buyOfferValue > 40) {
-		buyOffer = buyOfferValue * 1.25;
+		buyOffer = Math.floor(buyOfferValue * 1.25);
 	}else {
 		buyOffer = buyOfferValue + 10;
 	}
     if (sellOfferValue > 40) {
-		sellOffer = sellOfferValue * 0.8;
+		sellOffer = Math.floor(sellOfferValue * 0.8);
 	}else {
 		sellOffer = sellOfferValue - 10;
 	}
