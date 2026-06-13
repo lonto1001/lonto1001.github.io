@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMG Comment Filler</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #1a1a3e, #24243e, #1a1a3e, #0f0c29);
+    color: #e8e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    padding: 32px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    background: linear-gradient(to right, #88d8f8, #a090ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #7a7a9a;
+    margin-bottom: 24px;
+  }
+
+  .drop-zone {
+    border: 2px dashed rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.02);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: rgba(92,200,240,0.5);
+    background: rgba(92,200,240,0.06);
+  }
+
+  .drop-zone .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.6; }
+  .drop-zone .label { font-size: 14px; color: #ccc; }
+  .drop-zone .hint { font-size: 11px; color: #666; margin-top: 4px; }
+
+  .file-info {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(92,200,240,0.06);
+    border: 1px solid rgba(92,200,240,0.15);
+    border-radius: 10px;
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .file-info.show { display: flex; }
+  .file-info .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-info .clear { cursor: pointer; color: #666; font-size: 11px; }
+  .file-info .clear:hover { color: #aaa; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-fill {
+    background: linear-gradient(135deg, rgba(80,180,255,0.25), rgba(140,100,255,0.25));
+    border: 1px solid rgba(120,200,255,0.3);
+    color: #c8e6ff;
+    box-shadow: 0 4px 16px rgba(80,180,255,0.12);
+  }
+  .btn-fill:hover { background: linear-gradient(135deg, rgba(80,180,255,0.35), rgba(140,100,255,0.35)); }
+  .btn-fill:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-download {
+    background: linear-gradient(135deg, rgba(80,220,160,0.2), rgba(80,180,255,0.2));
+    border: 1px solid rgba(80,220,160,0.3);
+    color: #b4f0d2;
+    box-shadow: 0 4px 16px rgba(80,220,160,0.1);
+  }
+  .btn-download:hover { background: linear-gradient(135deg, rgba(80,220,160,0.3), rgba(80,180,255,0.3)); }
+
+  .btn-new {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+  }
+  .btn-new:hover { background: rgba(255,255,255,0.08); }
+
+  .stats { display: none; margin-top: 20px; }
+  .stats.show { display: block; }
+
+  .stats-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .stats-header .check { color: #4ade80; font-size: 20px; font-weight: 700; }
+  .stats-header .text { font-size: 15px; font-weight: 600; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-cell {
+    background: rgba(22,22,42,0.8);
+    border: 1px solid #2a2a45;
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .stat-cell .val { font-size: 18px; font-weight: 700; }
+  .stat-cell .lbl { font-size: 10px; color: #7a7a9a; margin-top: 2px; }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-row .stat-cell .val { font-size: 13px; font-weight: 600; color: #aaa; }
+
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row .btn { flex: 1; }
+
+  .spinner {
+    display: none;
+    text-align: center;
+    padding: 32px 0;
+    margin-top: 14px;
+  }
+  .spinner.show { display: block; }
+  .spinner .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #5cc8f0;
+    animation: pulse 1s ease-in-out infinite;
+    margin: 0 4px;
+  }
+  .spinner .dot:nth-child(2) { animation-delay: 0.15s; }
+  .spinner .dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+  .spinner p { font-size: 13px; color: #7a7a9a; margin-top: 12px; }
+
+  .info-box {
+    margin-top: 18px;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    font-size: 11px;
+    color: #666;
+    line-height: 1.5;
+  }
+  .info-box span { color: #999; font-weight: 500; }
+
+  .error-box {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(255,100,100,0.08);
+    border: 1px solid rgba(255,100,100,0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    color: #f88;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>CMG Comment Filler</h1>
+  <p class="subtitle">Fill comments with global linear levels for Ruido-type lines</p>
+
+  <!-- Upload state -->
+  <div id="state-upload">
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">&#8593;</div>
+      <div class="label">Drop .CMG file here or click to browse</div>
+      <div class="hint">dBBati32 campaign file</div>
+      <input type="file" id="fileInput" accept=".cmg,.CMG" style="display:none">
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <span class="name" id="fileName"></span>
+      <span class="clear" id="clearFile">Clear</span>
+    </div>
+
+    <button class="btn btn-fill" id="btnFill" disabled>Fill Comment Fields</button>
+
+    <div class="info-box">
+      Fills the <span>comment column</span> (INFO field) with the global linear level for each Ruido-type measurement line.<br>
+      Computes L = 10 &middot; log&#8321;&#8320;(&Sigma;10<sup>Li/10</sup>) from 16-band spectrum data.<br>
+      Lines already containing comments are left unchanged.
+    </div>
+  </div>
+
+  <!-- Processing state -->
+  <div class="spinner" id="state-processing">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <p>Processing campaign file&hellip;</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Result state -->
+  <div class="stats" id="state-result">
+    <div class="stats-header">
+      <span class="check">&#10003;</span>
+      <span class="text" id="resultTitle">0 comment fields filled</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-cell"><div class="val" id="sTotal" style="color:#5cc8f0">0</div><div class="lbl">Total Items</div></div>
+      <div class="stat-cell"><div class="val" id="sRuido" style="color:#9b7dff">0</div><div class="lbl">Ruido Lines</div></div>
+      <div class="stat-cell"><div class="val" id="sFilled" style="color:#4ade80">0</div><div class="lbl">Filled</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-cell"><div class="val" id="sCommented">0</div><div class="lbl">Already Commented</div></div>
+      <div class="stat-cell"><div class="val" id="sNotRuido">0</div><div class="lbl">Non-Ruido</div></div>
+      <div class="stat-cell"><div class="val" id="sNoSpec">0</div><div class="lbl">No Spectrum</div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-download" id="btnDownload">Download</button>
+      <button class="btn btn-new" id="btnNew" style="flex:0.5">New File</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CMG Binary Processing (JavaScript port) ──────────────────────────────
+
+const RUIDO_BUIL = new Set([1, 2, 3, 5]);
+
+function readAscii(data, offset, len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    const c = data.getUint8(offset + i);
+    if (c < 32 || c > 126) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+
+function parseSubTags(data, start, end) {
+  const tags = [];
+  let pos = start;
+  while (pos < end - 4) {
+    let valid = true;
+    let tagStr = '';
+    for (let i = 0; i < 4; i++) {
+      const c = data.getUint8(pos + i);
+      if (!((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122))) {
+        valid = false; break;
+      }
+      tagStr += String.fromCharCode(c);
+    }
+    if (!valid || tagStr.length !== 4) { pos++; continue; }
+    if (pos + 8 > end) break;
+    const subSize = data.getUint32(pos + 4, true);
+    if (subSize === 0 || subSize > 50000) { pos++; continue; }
+    tags.push({ tag: tagStr, offset: pos - start, size: subSize, dataOffset: pos + 8 });
+    pos += 8 + subSize;
+  }
+  return tags;
+}
+
+function findItemBlocks(data) {
+  const items = [];
+  const len = data.byteLength;
+  let pos = 0;
+  while (pos < len - 4) {
+    // Find 'ITEM'
+    let found = -1;
+    for (let i = pos; i < len - 7; i++) {
+      if (data.getUint8(i) === 0x49 && data.getUint8(i+1) === 0x54 &&
+          data.getUint8(i+2) === 0x45 && data.getUint8(i+3) === 0x4D) {
+        found = i; break;
+      }
+    }
+    if (found === -1) break;
+    const size = data.getUint32(found + 4, true);
+    if (size > 0 && size < 100000) items.push({ offset: found, size });
+    pos = found + 4;
+  }
+  return items;
+}
+
+function extractSpectrum(data, stosDataOff, stosSize) {
+  // Find 'DATA' tag within STOS payload
+  const end = stosDataOff + stosSize;
+  for (let i = stosDataOff; i < end - 4; i++) {
+    if (data.getUint8(i) === 0x44 && data.getUint8(i+1) === 0x41 &&
+        data.getUint8(i+2) === 0x54 && data.getUint8(i+3) === 0x41) {
+      const payloadSize = data.getUint32(i + 4, true);
+      if (payloadSize < 32) return null;
+      const vals = [];
+      for (let j = 0; j < 32; j += 2) {
+        vals.push(data.getUint16(i + 8 + j, true) / 100.0);
+      }
+      return vals;
+    }
+  }
+  return null;
+}
+
+function computeGlobalLin(spectrum) {
+  if (!spectrum || spectrum.length !== 16) return null;
+  let sum = 0;
+  for (const v of spectrum) sum += Math.pow(10, v / 10.0);
+  if (sum <= 0) return null;
+  return 10.0 * Math.log10(sum);
+}
+
+function processCMG(inputBuffer) {
+  const data = new DataView(inputBuffer);
+  const origItems = findItemBlocks(data);
+
+  const stats = { total: origItems.length, ruido: 0, commented: 0, filled: 0, noSpec: 0, notRuido: 0 };
+  const modifications = new Map(); // item index -> level text
+
+  // First pass: identify what to fill
+  for (let i = 0; i < origItems.length; i++) {
+    const { offset, size } = origItems[i];
+    const itemEnd = offset + 8 + size;
+    if (itemEnd > inputBuffer.byteLength) continue;
+
+    const subs = parseSubTags(data, offset + 8, itemEnd);
+
+    let buil = -1;
+    for (const t of subs) {
+      if (t.tag === 'BUIL' && t.size >= 2) {
+        buil = data.getUint16(t.dataOffset, true);
+        break;
+      }
+    }
+
+    if (!RUIDO_BUIL.has(buil)) { stats.notRuido++; continue; }
+    stats.ruido++;
+
+    let infoText = '';
+    for (const t of subs) {
+      if (t.tag === 'INFO') {
+        const np = findNull(data, t.dataOffset, t.size);
+        if (np > 0) infoText = readString(data, t.dataOffset, np);
+        break;
+      }
+    }
+
+    if (infoText.trim()) { stats.commented++; continue; }
+
+    let spectrum = null;
+    for (const t of subs) {
+      if (t.tag === 'STOS') {
+        spectrum = extractSpectrum(data, t.dataOffset, t.size);
+        break;
+      }
+    }
+
+    const gl = computeGlobalLin(spectrum);
+    if (gl === null) { stats.noSpec++; continue; }
+
+    modifications.set(i, gl.toFixed(1));
+    stats.filled++;
+  }
+
+  // Second pass: rebuild file
+  const src = new Uint8Array(inputBuffer);
+  const chunks = [];
+  let prevEnd = 0;
+
+  for (let i = 0; i < origItems.length; i++) {
+    const { offset, size } = origItems[i];
+    const itemEnd = offset + 8 + size;
+
+    if (offset > prevEnd) chunks.push(src.slice(prevEnd, offset));
+
+    if (modifications.has(i)) {
+      const levelText = modifications.get(i);
+      const subs = parseSubTags(data, offset + 8, itemEnd);
+      let infoTag = null;
+      for (const t of subs) { if (t.tag === 'INFO') { infoTag = t; break; } }
+
+      if (infoTag) {
+        const newInfoPayload = encodeInfoData(levelText);
+        const oldInfoTotal = 8 + infoTag.size;
+        const newInfoTotal = 8 + newInfoPayload.length;
+        const delta = newInfoTotal - oldInfoTotal;
+        const infoAbs = offset + 8 + infoTag.offset;
+
+        const before = src.slice(offset + 8, infoAbs);
+        const after = src.slice(infoAbs + oldInfoTotal, itemEnd);
+
+        const newItemHeader = new Uint8Array(8);
+        new DataView(newItemHeader.buffer).setUint32(0, 0x4D455449, false); // 'ITEM' big-endian bytes
+        writeTag(newItemHeader, 0, 'ITEM');
+        new DataView(newItemHeader.buffer).setUint32(4, size + delta, true);
+
+        const newInfoTag = new Uint8Array(8 + newInfoPayload.length);
+        writeTag(newInfoTag, 0, 'INFO');
+        new DataView(newInfoTag.buffer).setUint32(4, newInfoPayload.length, true);
+        newInfoTag.set(newInfoPayload, 8);
+
+        chunks.push(newItemHeader);
+        chunks.push(before);
+        chunks.push(newInfoTag);
+        chunks.push(after);
+      } else {
+        chunks.push(src.slice(offset, itemEnd));
+      }
+    } else {
+      chunks.push(src.slice(offset, itemEnd));
+    }
+    prevEnd = itemEnd;
+  }
+
+  if (prevEnd < src.length) chunks.push(src.slice(prevEnd));
+
+  // Concatenate
+  let totalLen = 0;
+  for (const c of chunks) totalLen += c.length;
+  const output = new Uint8Array(totalLen);
+  let wp = 0;
+  for (const c of chunks) { output.set(c, wp); wp += c.length; }
+
+  // Fix STOS absolute offsets
+  const outView = new DataView(output.buffer);
+  const outItems = findItemBlocks(outView);
+  for (const { offset, size } of outItems) {
+    const itemEnd = offset + 8 + size;
+    if (itemEnd > output.length) continue;
+    const subs = parseSubTags(outView, offset + 8, itemEnd);
+    for (const t of subs) {
+      if (t.tag === 'STOS') {
+        const stosStart = t.dataOffset;
+        // Find DATA within STOS
+        for (let j = stosStart; j < stosStart + t.size - 4; j++) {
+          if (output[j] === 0x44 && output[j+1] === 0x41 && output[j+2] === 0x54 && output[j+3] === 0x41) {
+            const dataPayloadAbs = j + 8;
+            outView.setUint32(stosStart + 0x0b, dataPayloadAbs, true);
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return { stats, output };
+}
+
+function findNull(data, offset, maxLen) {
+  for (let i = 0; i < maxLen; i++) {
+    if (data.getUint8(offset + i) === 0) return i;
+  }
+  return -1;
+}
+
+function readString(data, offset, len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    const c = data.getUint8(offset + i);
+    if (c === 0) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+
+function encodeInfoData(text) {
+  const enc = new TextEncoder();
+  const bytes = enc.encode(text);
+  const result = new Uint8Array(bytes.length + 2);
+  result.set(bytes, 0);
+  result[bytes.length] = 0;
+  result[bytes.length + 1] = 0;
+  return result;
+}
+
+function writeTag(buf, offset, tag) {
+  for (let i = 0; i < 4; i++) buf[offset + i] = tag.charCodeAt(i);
+}
+
+
+// ─── UI Logic ──────────────────────────────────────────────────────────────
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const clearFile = document.getElementById('clearFile');
+const btnFill = document.getElementById('btnFill');
+const btnDownload = document.getElementById('btnDownload');
+const btnNew = document.getElementById('btnNew');
+const errorBox = document.getElementById('errorBox');
+
+const stateUpload = document.getElementById('state-upload');
+const stateProcessing = document.getElementById('state-processing');
+const stateResult = document.getElementById('state-result');
+
+let currentFile = null;
+let processedBlob = null;
+let processedName = '';
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+clearFile.addEventListener('click', reset);
+btnNew.addEventListener('click', reset);
+
+btnFill.addEventListener('click', processFile);
+
+btnDownload.addEventListener('click', () => {
+  if (!processedBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(processedBlob);
+  a.download = processedName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+function handleFile(file) {
+  if (!file.name.toUpperCase().endsWith('.CMG')) {
+    showError('Please select a .CMG file from dBBati32');
+    return;
+  }
+  currentFile = file;
+  fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+  fileInfo.classList.add('show');
+  btnFill.disabled = false;
+  hideError();
+}
+
+async function processFile() {
+  if (!currentFile) return;
+
+  stateUpload.classList.add('hidden');
+  stateResult.classList.remove('show');
+  stateProcessing.classList.add('show');
+  hideError();
+
+  // Give the UI a frame to update
+  await new Promise(r => setTimeout(r, 60));
+
+  try {
+    const buffer = await currentFile.arrayBuffer();
+    const { stats, output } = processCMG(buffer);
+
+    processedBlob = new Blob([output], { type: 'application/octet-stream' });
+    const base = currentFile.name.replace(/\.cmg$/i, '');
+    processedName = `${base}_filled.CMG`;
+
+    stateProcessing.classList.remove('show');
+
+    document.getElementById('sTotal').textContent = stats.total;
+    document.getElementById('sRuido').textContent = stats.ruido;
+    document.getElementById('sFilled').textContent = stats.filled;
+    document.getElementById('sCommented').textContent = stats.commented;
+    document.getElementById('sNotRuido').textContent = stats.notRuido;
+    document.getElementById('sNoSpec').textContent = stats.noSpec;
+    document.getElementById('resultTitle').textContent =
+      `${stats.filled} comment field${stats.filled !== 1 ? 's' : ''} filled`;
+
+    stateResult.classList.add('show');
+
+  } catch (err) {
+    stateProcessing.classList.remove('show');
+    stateUpload.classList.remove('hidden');
+    showError('Processing error: ' + err.message);
+  }
+}
+
+function reset() {
+  currentFile = null;
+  processedBlob = null;
+  processedName = '';
+  fileInput.value = '';
+  fileInfo.classList.remove('show');
+  btnFill.disabled = true;
+  stateResult.classList.remove('show');
+  stateProcessing.classList.remove('show');
+  stateUpload.classList.remove('hidden');
+  hideError();
+}
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+}
+function hideError() {
+  errorBox.classList.remove('show');
+}
+</script>
+</body>
+</html>
